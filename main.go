@@ -1,25 +1,35 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
+	"flag"
+	"fmt"
 	"os"
 )
 
 func main() {
-	// print("Welcome to ReqRes")
+	filepath := flag.String("f", "tests.yaml", "Path to the yaml file containing the tests")
+	flag.Parse()
+	data ,err:= os.ReadFile(*filepath) // dereferencing the string pointer
+
+	if err!=nil{
+		panic(err)
+	}
+
+	fmt.Println("Welcome to ReqRes ")
+	fmt.Println("This is an API testing tool")
+	fmt.Println("You write a yaml and we run the tests for you")
+	fmt.Println("Prepare your yaml file and press Enter to continue...")
+	fmt.Println("Check your statistics here http://localhost:8080/stats")
+	fmt.Println("The yaml file path is holding ", string(data))
+	
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	// text := scanner.Text()
-	nums := scanner.Bytes()
-	// convert nums to integer
-	num := 0
-	for _, b := range nums {
-		if b >= '0' && b <= '9' {
-			num = num*10 + int(b-'0')
-		}
-	};
-	x := num+1
-	fmt.Print("your input was ",num,x)
-
+	exitCode := scanner.Text()
+	fmt.Println("You entered:", exitCode)
+	if exitCode == "exit" {
+		return;
+	} else {
+		
+	}
 }
