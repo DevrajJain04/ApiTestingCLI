@@ -5,12 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	// "path/filepath"
 )
 
 func main() {
-	filepath := flag.String("f", "tests.yaml", "Path to the yaml file containing the tests")
+	runcmd := os.Args[1]
+	fmt.Println("run command diya",runcmd)
+	filepath := os.Args[2]
+	// filepath := flag.String("f", "test.yaml", "Path to the yaml file containing the tests")
 	flag.Parse()
-	data ,err:= os.ReadFile(*filepath) // dereferencing the string pointer
+	data ,err:= os.ReadFile(filepath) // dereferencing the string pointer
 
 	if err!=nil{
 		panic(err)
@@ -30,6 +34,6 @@ func main() {
 	if exitCode == "exit" {
 		return;
 	} else {
-		
+		fmt.Println("not exit wow")
 	}
 }

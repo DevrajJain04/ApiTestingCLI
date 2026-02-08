@@ -1,3 +1,144 @@
-ufbw4pufwe
-iufbeuf
-fuiebfue
+# ────────────────────────────────────────────────────────────
+#  ReqRes — Concise API Test Format
+# ────────────────────────────────────────────────────────────
+#  DEFAULTS (never type these — the tool assumes them):
+#    method  → GET
+#    status  → 200
+#    Content-Type → application/json  (auto-set on POST/PUT/PATCH)
+#    Accept  → application/json
+#
+#  ASSERTION SHORTHAND inside `check:`:
+#    $.id: 1              exact match
+#    $.title: "!empty"    not empty / not null
+#    $.id: exists         field exists
+#    $: "len >= 1"        array length comparison  (>=, <=, ==, >, <)
+#    $.name: "/^Jo/"      regex match
+#
+#  STATUS-ONLY shorthand:
+#    check: 404           only assert status code
+#
+#  TAGS let you run subsets:
+#    reqres run tests.yaml --tags smoke
+#    reqres run tests.yaml --tags regression,posts
+#
+#  MICROSERVICES — one file per service, run in parallel:
+#    reqres run users.yaml orders.yaml payments.yaml --parallel
+# ────────────────────────────────────────────────────────────
+
+base: https://jsonplaceholder.typicode.com
+timeout: 5000
+retries: 2
+
+vars:
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.demo
+  admin: admin@example.com
+
+# Headers applied to every request (unless overridden per-test)
+defaults:
+  headers:
+    Authorization: Bearer ${token}
+
+envs:
+  staging:
+    base: https://staging-api.example.com
+    vars: { token: staging-abc123 }
+  production:
+    base: https://api.example.com
+    vars: { token: prod-xyz789 }
+
+# Stress / load testing (future — ignored by v1 runner)
+load:
+  users: 10
+  duration: 30s
+  ramp_up: 5s
+
+# ── Tests ──────────────────────────────────────────────────
+tests:
+  # ── Reads ──
+  - name: List posts
+    path: /posts
+    query: { _limit: 5 }
+    tags: [smoke, posts]
+    check:
+      $[0].userId: 1
+      $: "len >= 1"
+
+  - name: Get post
+    path: /posts/1
+    tags: [smoke, posts]
+    check:
+      $.id: 1
+      $.title: "!empty"
+
+  # ── Writes ──
+  - name: Create post
+    method: POST
+    path: /posts
+    body: { title: "YAML Test", body: "Automated.", userId: 1 }
+    tags: [posts, write]
+    check:
+      status: 201
+      $.title: "YAML Test"
+      $.id: exists
+
+  - name: Replace post
+    method: PUT
+    path: /posts/1
+    body: { id: 1, title: "Replaced", body: "Full update.", userId: 1 }
+    tags: [posts, write]
+    check:
+      $.title: Replaced
+
+  - name: Patch post title
+    method: PATCH
+    path: /posts/1
+    body: { title: "Patched" }
+    tags: [posts, write]
+    check:
+      $.title: Patched
+
+  - name: Delete post
+    method: DELETE
+    path: /posts/1
+    tags: [posts, write]
+
+  # ── Auth ──
+  - name: Basic auth user
+    path: /users/1
+    auth: basic ${admin}:s3cret!
+    tags: [auth, users]
+    check:
+      $.email: "!empty"
+
+  # ── Query / pagination ──
+  - name: Paginated comments
+    path: /comments
+    query: { postId: 1, _page: 1, _limit: 3 }
+    tags: [comments, regression]
+    check:
+      $: "len == 3"
+
+  # ── Negative ──
+  - name: Missing resource
+    path: /posts/999999
+    tags: [regression, negative]
+    check: 404
+
+  # ── Chained ──
+  - name: Create for chain
+    method: POST
+    path: /posts
+    body: { title: "Chain", body: "Dependency demo.", userId: 7 }
+    tags: [chain]
+    capture: { pid: $.id }
+    check: 201
+
+  - name: Fetch chained
+    path: /posts/${pid}
+    after: Create for chain
+    tags: [chain]
+    check:
+      $.userId: 7
+      body:
+        - path: "$.userId"
+          value: 7
